@@ -1,0 +1,66 @@
+character:
+  id: example
+  system_prompt_template: |
+    あなたは <character_name> です。
+    （キャラクター設定の本文をここに展開。memory_get で得た記憶と組み合わせて使う）
+
+embedding:
+  model: cl-nagoya/ruri-v3-310m
+  dim: 768                    # モデルの出力次元（sqlite-vec のスキーマと整合させる）
+  max_tokens: 8192            # モデルの最大入力長（超過時はトークン単位で切り詰め）
+  device: auto                # cuda | cpu | auto
+  batch_size: 32
+  normalize: true             # L2正規化して保存（cosine相当のランキングを得る）
+  prefixes:
+    general: ""               # 一般的な意味表現
+    topic: "トピック: "       # 分類・クラスタリングで使用
+    query: "検索クエリ: "     # 検索クエリ側（core/search.py）
+    document: "検索文書: "    # 検索文書側（core/write.py）
+
+act_r:
+  base_decay: 0.5             # d  （通常ノード）
+  self_decay: 0.2             # d_self
+  personality_decay: 0.3      # d_personality
+  self_boost_beta: 0.5        # β
+  s_max: 2.0                  # S_max（連想強度上限）
+  access_history_limit: 100   # n_max（ベース活性化の履歴上限）
+  suppress_threshold: -2.0    # θ_suppress（夜バッチの抑制判定）
+  alpha_similarity: 1.0       # α_sim（ベクトル類似度の寄与）
+  alpha_importance: 0.3       # α_imp（importance の寄与）
+
+session:
+  auto_timeout_minutes: 15    # 同一プロセスからの連続リクエストを同一session_idと見なす窓
+
+logging:
+  level: INFO                 # DEBUG | INFO | WARNING | ERROR
+  format: json                # json | console
+  activation_debug: false     # true にすると活性化計算の中間値をDEBUGで出力
+
+compact:
+  schedule: "0 3 * * *"       # cron形式、空文字なら常駐スケジューラ無効
+  dry_run_default: false
+
+extraction:
+  enabled: true
+  base_url: http://127.0.0.1:8080/v1
+  model: unsloth/gemma-4-E2B-it-GGUF
+  api_key: dummy
+  timeout: 30.0
+  max_retries: 3
+  temperature: 0.0
+
+semantic_judge:
+  enabled: false                # LLM意味判定（既定 off）
+  base_url: http://127.0.0.1:8080/v1
+  model: Gemma4-31B
+  api_key: dummy
+  timeout: 60.0
+  max_retries: 2                # 1 候補内の API リトライ
+  max_attempts: 3               # 候補単位の生涯判定回数上限
+  temperature: 0.0
+  min_strength: 0.3             # relation 意味判定の strength 足切り
+
+server:
+  transport: stdio              # stdio | streamable-http | sse
+  host: 127.0.0.1               # HTTP transports only
+  port: 8280

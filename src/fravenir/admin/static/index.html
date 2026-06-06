@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fravenir admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="view-panel" data-theme="dark">
+  <header id="stats-bar">
+    <div id="stats-items"></div>
+    <div id="search-box">
+      <input type="search" id="search-input" placeholder="ノード名で検索..." autocomplete="off">
+      <button type="button" id="search-clear" hidden aria-label="クリア">×</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside id="sidebar">
+      <div class="card">
+        <h4 class="card-title">Scope</h4>
+        <label class="radio-label"><input type="radio" name="scope" value="active" checked><span class="radio-text">active</span></label>
+        <label class="radio-label"><input type="radio" name="scope" value="archived"><span class="radio-text">archived</span></label>
+        <label class="radio-label"><input type="radio" name="scope" value="all"><span class="radio-text">all (heavy)</span></label>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">Layout</h4>
+        <div class="slider-row">
+          <span class="slider-label">Spread</span>
+          <input type="range" id="spread-slider" min="0.5" max="10.0" step="0.1" value="3.0">
+          <span class="slider-value" id="spread-value">3.0</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">View</h4>
+        <div class="toggle-row">
+          <span class="toggle-label">Panel</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="view-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Popover</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">Filter (kind)</h4>
+        <label class="check-label"><input type="checkbox" name="kind" value="facts" checked><span class="check-text">facts</span></label>
+        <label class="check-label"><input type="checkbox" name="kind" value="state" checked><span class="check-text">state</span></label>
+        <label class="check-label"><input type="checkbox" name="kind" value="emo" checked><span class="check-text">emo</span></label>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">Filter (type)</h4>
+        <label class="check-label"><input type="checkbox" name="type" value="episode" checked><span class="check-text">episode</span></label>
+        <label class="check-label"><input type="checkbox" name="type" value="entity" checked><span class="check-text">entity</span></label>
+        <label class="check-label"><input type="checkbox" name="type" value="relation" checked><span class="check-text">relation</span></label>
+        <label class="check-label"><input type="checkbox" name="type" value="mentions" checked><span class="check-text">mentions</span></label>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">Filter (advanced)</h4>
+        <div class="slider-row">
+          <span class="slider-label">Importance</span>
+          <input type="range" id="importance-slider" min="1" max="3" step="1" value="1">
+          <span class="slider-value" id="importance-value">all</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Degree</span>
+          <input type="range" id="degree-slider" min="0" max="20" step="1" value="0">
+          <span class="slider-value" id="degree-value">all</span>
+        </div>
+      </div>
+
+      <button id="reload" class="reload-btn">Reload</button>
+
+      <div class="card legend-card">
+        <h4 class="card-title">Legend</h4>
+        <div class="legend-group">
+          <div class="legend-subtitle">Episode</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-facts"></span>facts</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-state"></span>state</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-emo"></span>emo</div>
+        </div>
+        <div class="legend-group">
+          <div class="legend-subtitle">Entity</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-person"></span>person</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-place"></span>place</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-concept"></span>concept</div>
+          <div class="legend-item"><span class="legend-dot legend-dot-self"></span>self hub</div>
+        </div>
+        <div class="legend-group">
+          <div class="legend-subtitle">Edge</div>
+          <div class="legend-item"><span class="legend-line legend-mentions"></span>mentions</div>
+          <div class="legend-item"><span class="legend-line legend-relation"></span>relation</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 class="card-title">Theme</h4>
+        <div class="toggle-row">
+          <span class="toggle-label">Dark</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="theme-toggle">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Light</span>
+        </div>
+      </div>
+    </aside>
+    <main id="cy"></main>
+    <aside id="detail-panel"></aside>
+  </div>
+  <div id="popover" hidden></div>
+  <div id="modal-root" hidden>
+    <div class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title"></h3>
+          <button id="modal-close" aria-label="閉じる">&times;</button>
+        </div>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/static/cytoscape-bootstrap.js"></script>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# Runtime data
+data/
+characters/
+reports/
+
+# Python / build
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+dist/
+*.egg-info/
+
+# Databases
+*.db
+*.db-*
+*.db-wal
+*.db-shm
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Agent-local files
+.codex/
+.serena/
+.claude/
+.agents/
+.agent-notes/
+
+# Internal docs
+docs/working/
+docs/internal/
+docs/private/
+docs/exhibition/
+docs/archive/

@@ -1,0 +1,18 @@
+# seed.yaml sample — character identity and initial episodes.
+# Copy to characters/<id>/seed.yaml, or pass explicitly with --seed <path>.
+
+identity:
+  canonical_name: example
+  aliases: []
+  description: "キャラクターの簡単な自己紹介をここに書く"
+
+personality:
+  - canonical_name: 好奇心
+    entity_type: concept
+    description: 仕組みや原理に興味を持つ性質
+    self_weight: 0.7
+
+initial_episodes:
+  - content: "自分の存在に関する根源的なエピソードをここに書く"
+    kind: facts
+    importance: 3

@@ -1,0 +1,18 @@
+[Unit]
+Description=fravenir MCP server for character %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<USER>
+WorkingDirectory=<REPO_PATH>
+Environment=PATH=/home/<USER>/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/<USER>/.local/bin/uv run fravenir serve --character %i --transport streamable-http --host 127.0.0.1 --port 8280
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

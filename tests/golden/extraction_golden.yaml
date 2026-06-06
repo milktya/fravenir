@@ -1,0 +1,239 @@
+# P3-5 エンティティ抽出ゴールデンデータ (20件)
+#
+# 使い方:
+#   - 各ケースの input を ExtractionClient に流し、結果を expected と突合する
+#   - entity の一致判定: (canonical_name, entity_type) の組で厳密一致
+#   - relation の一致判定: (src, dst, predicate) の3つ組で厳密一致
+#   - precision_i = matched / total_extracted（total=0 は 1.0 扱い）
+#   - 20件平均 precision >= 0.7 で DoD クリア
+#
+# expected_entities / expected_relations は「この入力から抽出されて妥当と
+# 認められるエントリのホワイトリスト」。LLM がこれ以外を出すと精度が下がる。
+# entity_type は core/extraction.py の DEFAULT_ENTITY_TYPES に準拠:
+#   person | concept | work | place | emotion
+
+cases:
+  # ── 日常会話系 6件 ──
+  - id: daily_01
+    category: daily
+    input: "昨日みるちゃと近所のカフェでコーヒーを飲んだ"
+    expected_entities:
+      - { canonical_name: "みるちゃ", entity_type: "person" }
+      - { canonical_name: "カフェ",   entity_type: "place" }
+      - { canonical_name: "コーヒー", entity_type: "concept" }
+    expected_relations:
+      - { src: "みるちゃ", dst: "カフェ",   predicate: "visits" }
+      - { src: "みるちゃ", dst: "コーヒー", predicate: "drinks" }
+
+  - id: daily_02
+    category: daily
+    input: "あたしは猫が好きで、特にサバトラ柄に弱い"
+    expected_entities:
+      - { canonical_name: "私", entity_type: "person" }
+      - { canonical_name: "猫", entity_type: "concept" }
+      - { canonical_name: "サバトラ", entity_type: "concept" }
+    expected_relations:
+      - { src: "私", dst: "猫",       predicate: "likes" }
+      - { src: "私", dst: "サバトラ", predicate: "likes" }
+
+  - id: daily_03
+    category: daily
+    input: "みるちゃの家で鍋パーティをした。寒い日にぴったりだった"
+    expected_entities:
+      - { canonical_name: "みるちゃ", entity_type: "person" }
+      - { canonical_name: "家",       entity_type: "place" }
+      - { canonical_name: "鍋パーティ", entity_type: "concept" }
+    expected_relations:
+      - { src: "みるちゃ",   dst: "鍋パーティ", predicate: "hosts" }
+      - { src: "鍋パーティ", dst: "家",         predicate: "located_at" }
+
+  - id: daily_04
+    category: daily
+    input: "東京駅で新幹線に乗って京都へ行った"
+    expected_entities:
+      - { canonical_name: "東京駅",   entity_type: "place" }
+      - { canonical_name: "新幹線",   entity_type: "concept" }
+      - { canonical_name: "京都",     entity_type: "place" }
+    expected_relations:
+      - { src: "新幹線", dst: "東京駅", predicate: "visits" }
+      - { src: "新幹線", dst: "京都",   predicate: "visits" }
+
+  - id: daily_05
+    category: daily
+    input: "みるちゃが作ってくれたパスタが美味しかった"
+    expected_entities:
+      - { canonical_name: "みるちゃ", entity_type: "person" }
+      - { canonical_name: "パスタ",   entity_type: "concept" }
+    expected_relations:
+      - { src: "みるちゃ", dst: "パスタ", predicate: "cooks" }
+
+  - id: daily_06
+    category: daily
+    input: "図書館で夏目漱石のこころを借りた"
+    expected_entities:
+      - { canonical_name: "図書館",     entity_type: "place" }
+      - { canonical_name: "夏目漱石",   entity_type: "person" }
+      - { canonical_name: "こころ",     entity_type: "work" }
+    expected_relations:
+      - { src: "夏目漱石", dst: "こころ", predicate: "writes" }
+
+  # ── 技術・作業系 5件 ──
+  - id: tech_01
+    category: tech
+    input: "Phase3のP3-4が完了。NetworkXで部分グラフを構築して2ホップBFSを実装した"
+    expected_entities:
+      - { canonical_name: "Phase3",     entity_type: "concept" }
+      - { canonical_name: "P3-4",       entity_type: "concept" }
+      - { canonical_name: "NetworkX",   entity_type: "work" }
+      - { canonical_name: "2ホップBFS", entity_type: "concept" }
+    expected_relations:
+      - { src: "P3-4",     dst: "Phase3",     predicate: "part_of" }
+      - { src: "NetworkX", dst: "2ホップBFS", predicate: "implements" }
+
+  - id: tech_02
+    category: tech
+    input: "Qwen3.5-2Bを使ってエンティティ抽出をJSON modeで動かした"
+    expected_entities:
+      - { canonical_name: "Qwen3.5-2B",       entity_type: "work" }
+      - { canonical_name: "エンティティ抽出", entity_type: "concept" }
+      - { canonical_name: "JSON mode",        entity_type: "concept" }
+    expected_relations:
+      - { src: "Qwen3.5-2B",       dst: "エンティティ抽出", predicate: "performs" }
+      - { src: "エンティティ抽出", dst: "JSON mode",        predicate: "uses" }
+
+  - id: tech_03
+    category: tech
+    input: "DNS rebinding保護でPOST /mcpが421を返していた。build_serverにhost引数を追加して修正"
+    expected_entities:
+      - { canonical_name: "DNS rebinding保護", entity_type: "concept" }
+      - { canonical_name: "POST /mcp",         entity_type: "concept" }
+      - { canonical_name: "421",               entity_type: "concept" }
+      - { canonical_name: "build_server",      entity_type: "concept" }
+    expected_relations:
+      - { src: "DNS rebinding保護", dst: "POST /mcp",    predicate: "blocks" }
+      - { src: "POST /mcp",         dst: "421",          predicate: "causes" }
+      - { src: "build_server",      dst: "DNS rebinding保護", predicate: "fixes" }
+
+  - id: tech_04
+    category: tech
+    input: "ACT-R活性化のS_ji項を有効化した。S_max=2.0でfan_outから算出する"
+    expected_entities:
+      - { canonical_name: "ACT-R活性化", entity_type: "concept" }
+      - { canonical_name: "S_ji",        entity_type: "concept" }
+      - { canonical_name: "S_max",       entity_type: "concept" }
+      - { canonical_name: "fan_out",     entity_type: "concept" }
+    expected_relations:
+      - { src: "S_ji",        dst: "ACT-R活性化", predicate: "part_of" }
+      - { src: "S_ji",        dst: "fan_out",     predicate: "part_of" }
+
+  - id: tech_05
+    category: tech
+    input: "Tailscaleの100.x.x.x:8280でstreamable-httpサーバーを常駐させた"
+    expected_entities:
+      - { canonical_name: "Tailscale",        entity_type: "work" }
+      - { canonical_name: "streamable-http",  entity_type: "concept" }
+      - { canonical_name: "サーバー",         entity_type: "concept" }
+    expected_relations:
+      - { src: "サーバー", dst: "Tailscale",       predicate: "runs_on" }
+      - { src: "サーバー", dst: "streamable-http", predicate: "uses" }
+
+  # ── 感情・抽象系 4件 ──
+  - id: emo_01
+    category: emo
+    input: "ちょっと嬉しかった"
+    expected_entities:
+      - { canonical_name: "嬉しさ", entity_type: "emotion" }
+    expected_relations: []
+
+  - id: emo_02
+    category: emo
+    input: "なんだか落ち込む日だった"
+    expected_entities:
+      - { canonical_name: "落ち込み", entity_type: "emotion" }
+    expected_relations: []
+
+  - id: emo_03
+    category: emo
+    input: "ずっと気になってたバグが直った瞬間、スッと肩の力が抜けた"
+    expected_entities:
+      - { canonical_name: "バグ",   entity_type: "concept" }
+      - { canonical_name: "安堵",   entity_type: "emotion" }
+    expected_relations:
+      - { src: "バグ", dst: "安堵", predicate: "causes" }
+
+  - id: emo_04
+    category: emo
+    input: "今日はただただ眠い"
+    expected_entities:
+      - { canonical_name: "眠い", entity_type: "emotion" }
+    expected_relations: []
+
+  # ── 複合関係系 5件 ──
+  - id: complex_01
+    category: complex
+    input: "みるちゃがあたしに新しいプロジェクトを紹介してくれた。fravenirというMCPサーバーだ"
+    expected_entities:
+      - { canonical_name: "みるちゃ",         entity_type: "person" }
+      - { canonical_name: "あたし",           entity_type: "person" }
+      - { canonical_name: "fravenir",  entity_type: "work" }
+      - { canonical_name: "MCPサーバー",      entity_type: "concept" }
+    expected_relations:
+      - { src: "みるちゃ",        dst: "fravenir", predicate: "introduces" }
+      - { src: "fravenir", dst: "MCPサーバー",     predicate: "is_a" }
+
+  - id: complex_02
+    category: complex
+    input: "夏目漱石が朝日新聞で連載したこころは、明治の知識人の苦悩を描いた作品として知られる"
+    expected_entities:
+      - { canonical_name: "夏目漱石",   entity_type: "person" }
+      - { canonical_name: "朝日新聞",   entity_type: "work" }
+      - { canonical_name: "こころ",     entity_type: "work" }
+      - { canonical_name: "知識人の苦悩", entity_type: "concept" }
+    expected_relations:
+      - { src: "夏目漱石", dst: "こころ",           predicate: "writes" }
+      - { src: "こころ",   dst: "朝日新聞",         predicate: "part_of" }
+      - { src: "こころ",   dst: "知識人の苦悩",     predicate: "creates" }
+
+  - id: complex_03
+    category: complex
+    input: "AさんがBさんをCさんに紹介したことで、3人の共同プロジェクトが始まった"
+    expected_entities:
+      - { canonical_name: "Aさん",           entity_type: "person" }
+      - { canonical_name: "Bさん",           entity_type: "person" }
+      - { canonical_name: "Cさん",           entity_type: "person" }
+      - { canonical_name: "共同プロジェクト", entity_type: "concept" }
+    expected_relations:
+      - { src: "Aさん",              dst: "Bさん", predicate: "introduces" }
+      - { src: "Aさん",              dst: "Cさん", predicate: "introduces" }
+      - { src: "共同プロジェクト",   dst: "Aさん", predicate: "includes" }
+      - { src: "共同プロジェクト",   dst: "Bさん", predicate: "includes" }
+      - { src: "共同プロジェクト",   dst: "Cさん", predicate: "includes" }
+
+  - id: complex_04
+    category: complex
+    input: "FastMCPの初期化時にhostを渡すと、DNS rebinding保護がlocalhost以外では自動でoffになる"
+    expected_entities:
+      - { canonical_name: "FastMCP",           entity_type: "work" }
+      - { canonical_name: "host",              entity_type: "concept" }
+      - { canonical_name: "DNS rebinding保護", entity_type: "concept" }
+      - { canonical_name: "localhost",         entity_type: "concept" }
+    expected_relations:
+      - { src: "FastMCP",           dst: "host",              predicate: "accepts" }
+      - { src: "host",              dst: "DNS rebinding保護", predicate: "configures" }
+      - { src: "DNS rebinding保護", dst: "localhost",         predicate: "blocks" }
+
+  - id: complex_05
+    category: complex
+    input: "みるちゃがあたしにPhase3の仕様書を見せてくれて、エンティティ抽出をLLMで自動化する方針にワクワクした"
+    expected_entities:
+      - { canonical_name: "みるちゃ",         entity_type: "person" }
+      - { canonical_name: "あたし",           entity_type: "person" }
+      - { canonical_name: "Phase3仕様書",     entity_type: "work" }
+      - { canonical_name: "エンティティ抽出", entity_type: "concept" }
+      - { canonical_name: "LLM",              entity_type: "concept" }
+      - { canonical_name: "ワクワク",         entity_type: "emotion" }
+    expected_relations:
+      - { src: "みるちゃ",            dst: "Phase3仕様書",     predicate: "shares" }
+      - { src: "Phase3仕様書",        dst: "エンティティ抽出", predicate: "creates" }
+      - { src: "エンティティ抽出",    dst: "LLM",              predicate: "uses" }
+      - { src: "Phase3仕様書",        dst: "ワクワク",         predicate: "causes" }

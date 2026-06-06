@@ -1,0 +1,13 @@
+[Unit]
+Description=fravenir compact for character %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=<USER>
+WorkingDirectory=<REPO_PATH>
+Environment=PATH=/home/<USER>/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/<USER>/.local/bin/uv run fravenir compact %i
+StandardOutput=journal
+StandardError=journal

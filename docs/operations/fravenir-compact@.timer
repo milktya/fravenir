@@ -1,0 +1,10 @@
+[Unit]
+Description=Run fravenir compact daily for character %i
+
+[Timer]
+OnCalendar=*-*-* 05:00:00
+Persistent=true
+Unit=fravenir-compact@%i.service
+
+[Install]
+WantedBy=timers.target
