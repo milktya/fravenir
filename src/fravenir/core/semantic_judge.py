@@ -706,8 +706,13 @@ def _auto_reject_exhausted(
     conn: sqlite3.Connection,
     *,
     max_attempts: int,
+    now: datetime,
 ) -> int:
-    """judge_attempts >= max_attempts の low confidence 候補を resolved=2 に。"""
+    """judge_attempts >= max_attempts の low confidence 候補を resolved=2 に。
+
+    resolved_at に却下時刻を記録する（compact の dedup が curation 後再判定を
+    判断するために、却下時刻が必須）。
+    """
     rows = conn.execute(
         "SELECT id FROM merge_candidates "
         "WHERE resolved = 0 AND judge_attempts >= ? "
@@ -719,8 +724,9 @@ def _auto_reject_exhausted(
     ids = [int(r[0]) for r in rows]
     placeholders = ",".join("?" for _ in ids)
     conn.execute(
-        f"UPDATE merge_candidates SET resolved = 2 WHERE id IN ({placeholders})",
-        ids,
+        f"UPDATE merge_candidates SET resolved = 2, resolved_at = ? "
+        f"WHERE id IN ({placeholders})",
+        [now.isoformat(), *ids],
     )
     return len(ids)
 
@@ -766,8 +772,8 @@ def _process_one_candidate(
         action = "auto_resolved"
     elif confidence == "high" and label == "different":
         conn.execute(
-            "UPDATE merge_candidates SET resolved = 2 WHERE id = ?",
-            (cand["id"],),
+            "UPDATE merge_candidates SET resolved = 2, resolved_at = ? WHERE id = ?",
+            (now.isoformat(), cand["id"]),
         )
         result.auto_rejected += 1
         action = "auto_rejected"
@@ -840,7 +846,7 @@ def judge_merge_candidates(
                 ))
 
         rejected = _auto_reject_exhausted(
-            conn, max_attempts=config.max_attempts,
+            conn, max_attempts=config.max_attempts, now=now,
         )
         result.skipped_max_attempts = rejected
 

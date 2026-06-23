@@ -128,13 +128,15 @@ class TestJudgeMergeCandidates:
         conn = sqlite3.connect(db)
         try:
             mc = conn.execute(
-                "SELECT resolved, judge_label, judge_confidence, judge_attempts "
-                "FROM merge_candidates WHERE id = 1"
+                "SELECT resolved, judge_label, judge_confidence, judge_attempts, "
+                "resolved_at FROM merge_candidates WHERE id = 1"
             ).fetchone()
             assert mc[0] == 2
             assert mc[1] == "different"
             assert mc[2] == "high"
             assert mc[3] == 1
+            # 却下時刻が記録される（compact の curation ベース dedup の前提）
+            assert mc[4] == self.NOW.isoformat()
         finally:
             conn.close()
 
@@ -256,11 +258,14 @@ class TestJudgeMergeCandidates:
         conn = sqlite3.connect(db)
         try:
             mc = conn.execute(
-                "SELECT resolved, judge_attempts FROM merge_candidates WHERE id = 1"
+                "SELECT resolved, judge_attempts, resolved_at "
+                "FROM merge_candidates WHERE id = 1"
             ).fetchone()
             assert mc[0] == 2
             assert mc[1] == 3
             # _process_one_candidate increments to 3, then _auto_reject_exhausted catches
+            # max_attempts 超過の却下でも resolved_at が打たれる
+            assert mc[2] == self.NOW.isoformat()
         finally:
             conn.close()
 

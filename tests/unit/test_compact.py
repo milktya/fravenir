@@ -727,6 +727,130 @@ class TestDetectMergeCandidates:
         assert result.merge_candidates == 0
         assert _count_merge_candidates(tmp_project, char_id, resolved=0) == 1
 
+    def _setup_similar_pair(
+        self, tmp_project: Path, *, seed: int
+    ) -> tuple[str, int, int]:
+        """cosine 高・name 1文字差の検出対象ペアを作って (char_id, a_id, b_id) を返す。"""
+        char_id = _make_character(tmp_project)
+        a_id = _insert_entity_with_type(tmp_project, char_id, "テスト")
+        b_id = _insert_entity_with_type(tmp_project, char_id, "テス卜")
+        rng = np.random.default_rng(seed)
+        v = rng.normal(size=768).astype(np.float32)
+        _put_entity_vector(tmp_project, char_id, a_id, v)
+        _put_entity_vector(tmp_project, char_id, b_id, v)
+        return char_id, a_id, b_id
+
+    def _insert_resolved_candidate(
+        self,
+        tmp_project: Path,
+        char_id: str,
+        a_id: int,
+        b_id: int,
+        *,
+        resolved: int,
+        resolved_at: str | None,
+    ) -> None:
+        small, large = (a_id, b_id) if a_id < b_id else (b_id, a_id)
+        conn = sqlite3.connect(str(tmp_project / "data" / char_id / "kv.sqlite"))
+        try:
+            conn.execute(
+                "INSERT INTO merge_candidates "
+                "(entity_a, entity_b, similarity, resolved, resolved_at) "
+                "VALUES (?, ?, 0.99, ?, ?)",
+                (small, large, resolved, resolved_at),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _set_curated_at(
+        self, tmp_project: Path, char_id: str, entity_id: int, curated_at: str
+    ) -> None:
+        conn = sqlite3.connect(str(tmp_project / "data" / char_id / "kv.sqlite"))
+        try:
+            conn.execute(
+                "UPDATE entities SET curated_at = ? WHERE id = ?",
+                (curated_at, entity_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_skips_rejected_without_curation(self, tmp_project: Path) -> None:
+        """却下済み(resolved=2)で curation されていないペアは再検出しない。"""
+        char_id, a_id, b_id = self._setup_similar_pair(tmp_project, seed=21)
+        self._insert_resolved_candidate(
+            tmp_project, char_id, a_id, b_id,
+            resolved=2, resolved_at="2026-03-01T00:00:00+00:00",
+        )
+
+        result = run_compact(character_id=char_id, config=_make_config(char_id))
+
+        assert result.merge_candidates == 0
+        assert _count_merge_candidates(tmp_project, char_id, resolved=0) == 0
+
+    def test_redetects_rejected_after_curation(self, tmp_project: Path) -> None:
+        """却下後に entity が curation された(curated_at > resolved_at)なら再判定を許可。"""
+        char_id, a_id, b_id = self._setup_similar_pair(tmp_project, seed=22)
+        self._insert_resolved_candidate(
+            tmp_project, char_id, a_id, b_id,
+            resolved=2, resolved_at="2026-03-01T00:00:00+00:00",
+        )
+        # 却下より後に curation
+        self._set_curated_at(
+            tmp_project, char_id, a_id, "2026-03-02T00:00:00+00:00"
+        )
+
+        result = run_compact(character_id=char_id, config=_make_config(char_id))
+
+        assert result.merge_candidates == 1
+        assert _count_merge_candidates(tmp_project, char_id, resolved=0) == 1
+
+    def test_skips_rejected_when_curation_predates_rejection(
+        self, tmp_project: Path
+    ) -> None:
+        """却下より前の curation では再検出しない（比較の向きガード）。"""
+        char_id, a_id, b_id = self._setup_similar_pair(tmp_project, seed=23)
+        self._insert_resolved_candidate(
+            tmp_project, char_id, a_id, b_id,
+            resolved=2, resolved_at="2026-03-01T00:00:00+00:00",
+        )
+        # 却下より前の curation → 新しい情報ではない
+        self._set_curated_at(
+            tmp_project, char_id, a_id, "2026-02-01T00:00:00+00:00"
+        )
+
+        result = run_compact(character_id=char_id, config=_make_config(char_id))
+
+        assert result.merge_candidates == 0
+
+    def test_skips_merged_pair(self, tmp_project: Path) -> None:
+        """merge 済み(resolved=1)ペアは恒久スキップ。"""
+        char_id, a_id, b_id = self._setup_similar_pair(tmp_project, seed=24)
+        self._insert_resolved_candidate(
+            tmp_project, char_id, a_id, b_id,
+            resolved=1, resolved_at="2026-03-01T00:00:00+00:00",
+        )
+
+        result = run_compact(character_id=char_id, config=_make_config(char_id))
+
+        assert result.merge_candidates == 0
+
+    def test_redetects_legacy_rejected_null_resolved_at(
+        self, tmp_project: Path
+    ) -> None:
+        """resolved_at が NULL の旧却下行は初回 1 回だけ再検出される（移行救済）。"""
+        char_id, a_id, b_id = self._setup_similar_pair(tmp_project, seed=25)
+        self._insert_resolved_candidate(
+            tmp_project, char_id, a_id, b_id,
+            resolved=2, resolved_at=None,
+        )
+
+        result = run_compact(character_id=char_id, config=_make_config(char_id))
+
+        assert result.merge_candidates == 1
+        assert _count_merge_candidates(tmp_project, char_id, resolved=0) == 1
+
     def test_dry_run_skips_insert(self, tmp_project: Path) -> None:
         char_id = _make_character(tmp_project)
         a_id = _insert_entity_with_type(tmp_project, char_id, "テスト")

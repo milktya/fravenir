@@ -435,7 +435,13 @@ def _detect_merge_candidates(
     2. numpy で内積行列 = ペアワイズコサイン類似度を計算
     3. 上三角の cosine > similarity_threshold のペアを抽出
     4. entity_type 一致 + canonical_name レーベンシュタイン距離 < levenshtein_threshold で絞る
-    5. resolved=0 で同ペアが merge_candidates に既登録ならスキップ
+    5. 同ペアが merge_candidates に既登録ならスキップ（変化ベース dedup）:
+       - resolved=0（pending）/ resolved=1（merge 済み）は恒久スキップ
+       - resolved=2（却下済み）は原則スキップするが、却下後にどちらかの entity が
+         curation された（curated_at > resolved_at）場合のみ再判定を許可。
+         entity の name/type/description は作成後ほぼ固定で、judge は temperature=0
+         の決定的判定なので、中身が変わらない限り再判定しても結論は同じ＝電力の無駄。
+         人手 curation で内容が変わったときだけ拾えば十分（merge 可能になる芽も拾える）。
     6. (entity_a, entity_b) を (小id, 大id) に正規化して insert
 
     Returns:
@@ -484,11 +490,27 @@ def _detect_merge_candidates(
 
         small_id, large_id = (a_id, b_id) if a_id < b_id else (b_id, a_id)
         existing = kv_conn.execute(
-            "SELECT 1 FROM merge_candidates "
-            "WHERE resolved = 0 "
-            "AND ((entity_a = ? AND entity_b = ?) OR (entity_a = ? AND entity_b = ?)) "
-            "LIMIT 1",
-            (small_id, large_id, large_id, small_id),
+            """
+            SELECT 1 FROM merge_candidates mc
+            WHERE (
+                (mc.entity_a = ? AND mc.entity_b = ?)
+                OR (mc.entity_a = ? AND mc.entity_b = ?)
+            )
+            AND (
+                mc.resolved IN (0, 1)
+                OR (
+                    mc.resolved = 2
+                    AND mc.resolved_at IS NOT NULL
+                    AND datetime(mc.resolved_at) >= COALESCE(
+                        (SELECT MAX(datetime(curated_at))
+                         FROM entities WHERE id IN (?, ?)),
+                        datetime(mc.resolved_at)
+                    )
+                )
+            )
+            LIMIT 1
+            """,
+            (small_id, large_id, large_id, small_id, a_id, b_id),
         ).fetchone()
         if existing:
             continue
